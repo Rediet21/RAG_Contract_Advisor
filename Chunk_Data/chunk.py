@@ -2,8 +2,9 @@ from PyPDF2 import PdfReader
 from langchain.text_splitter import CharacterTextSplitter
 from langchain.embeddings.openai import OpenAIEmbeddings
 import openai
-from langchain.vectorstores import Chroma
-from langchain.embeddings import OpenAIEmbeddings
+
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import OpenAIEmbeddings
 
 from dotenv import load_dotenv , find_dotenv
 _ = load_dotenv(find_dotenv()) # read local .env file
@@ -40,7 +41,7 @@ embedding = OpenAIEmbeddings()
 #directory to store the embedding on disk
 persist_directory = 'db'
 
-vectordb = Chroma.from_documents(documents=texts, 
+vectordb = Chroma.from_documents(texts, 
                                  embedding=embedding,
                                  persist_directory=persist_directory)
 
@@ -50,3 +51,11 @@ vectordb = None
 
 vectordb = Chroma(persist_directory=persist_directory, 
                   embedding_function=embedding)
+
+# retriever = vectordb.as_retriever()
+# docs = retriever.get_relevant_documents("How much money did Pando raise?")
+query = "Who owns the IP? ?"
+docs = vectordb.similarity_search(query)
+
+print(len(docs))
+
