@@ -1,7 +1,7 @@
 from ragas.langchain.evalchain import RagasEvaluatorChain
 from ragas.metrics import faithfulness , answer_relevancy, context_precision , context_recall
 
-from Front_end.front import handle_input,get_pdf_text,get_text_chunks,get_embedding,get_conversation
+from utils.utils import get_pdf_text,get_text_chunks,get_embedding,get_conversation
 
 
 faithfulness_chain = RagasEvaluatorChain(metric=faithfulness)
@@ -10,8 +10,13 @@ context_rel_chain = RagasEvaluatorChain(metric=context_precision)
 context_recall_chain = RagasEvaluatorChain(metric=context_recall)
 from PyPDF2 import PdfReader
 
+from langchain.document_loaders import TextLoader
+from langchain.indexes import VectorstoreIndexCreator
+from langchain.chains import RetrievalQA
+from langchain_openai import ChatOpenAI
+
 #Bring the document
-file = PdfReader('data/Raptor Contract.pdf')
+file = PdfReader('Chunk_Data/data/Raptor_Contract .pdf')
 def get_pdf_text(file):
     
     text = " "
@@ -55,10 +60,15 @@ eval_answers = [
     "No. According to section 8 of the Agreement, the Advisor is an independent consultant and shall not be entitled to any overtime pay, insurance, paid vacation, severance payments or similar fringe or employment benefits from the Company."
     "If the Advisor is determined to be an employee of the Company by a governmental authority, payments to the Advisor will be retroactively reduced so that 60% constitutes salary payments and 40% constitutes payment for statutory rights and benefits. The Company may offset any amounts due to the Advisor from any amounts payable under the Agreement. The Advisor must indemnify the Company for any losses or expenses incurred if an employer/employee relationship is determined to exist." 
 ]
-
+llm = ChatOpenAI(temperature=0)
+qa_chain = RetrievalQA.from_chain_type(
+    llm,
+    retriever=vectordb.as_retriever(),
+    return_source_documents=True,
+)
 
 examples = [
-    {"query": q, "ground_truth": [eval_answers[i]]}
+    {"query": q, "ground_truths": [eval_answers[i]]}
     for i, q in enumerate(eval_questions)
 ]
 
@@ -78,23 +88,18 @@ answer_rel_chain = RagasEvaluatorChain(metric=answer_relevancy)
 context_rel_chain = RagasEvaluatorChain(metric=context_precision)
 context_recall_chain = RagasEvaluatorChain(metric=context_recall)
 
-predictions = conversation.batch(examples)
+predictions = qa_chain.batch(examples)
 
 print("evaluating...")
 r = faithfulness_chain.evaluate(examples, predictions)
-r
+print('faithfullness :', r)
+
 
 # evaluate context recall
 print("evaluating...")
 r = context_recall_chain.evaluate(examples, predictions)
-# data = {
-#     "question": eval_questions,
-#     "answer": answers,
-#     #"contexts": contexts,
-#     "ground_truths": eval_answers
-# }
-
-
-
-# handle_input
-# response = conversation({'question': query})
+print('context_recall:', r)
+r = context_rel_chain.evaluate(examples, predictions)
+print('context precision: ',r)
+r = answer_rel_chain.evaluate(examples, predictions)
+print('answer relevancy: ', r)
